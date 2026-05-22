@@ -44,9 +44,9 @@ export default function Dashboard() {
   }
 
   const toggleTaskStatus = (taskId: number) => {
-    const updatedTasks = tasks.map(task =>
+    const updatedTasks: Task[] = tasks.map(task =>
       task.id === taskId
-        ? { ...task, status: task.status === 'pending' ? 'completed' : 'pending' }
+        ? { ...task, status: (task.status === 'pending' ? 'completed' : 'pending') as 'pending' | 'completed' }
         : task
     )
     setTasks(updatedTasks)
