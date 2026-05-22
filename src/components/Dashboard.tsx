@@ -27,8 +27,17 @@ export default function Dashboard() {
     setTimeout(() => {
       const stored = localStorage.getItem('meetingTasks')
       if (stored) {
-        const parsed = JSON.parse(stored) as Task[]
-        setTasks(parsed)
+        const parsed = JSON.parse(stored)
+        const validatedTasks: Task[] = parsed.map((task: any) => ({
+          ...task,
+          status: ['pending', 'completed', 'observation'].includes(task.status) 
+            ? task.status as 'pending' | 'completed' | 'observation'
+            : 'pending',
+          priority: ['high', 'medium', 'low'].includes(task.priority)
+            ? task.priority as 'high' | 'medium' | 'low'
+            : 'medium'
+        }))
+        setTasks(validatedTasks)
       }
       setIsLoading(false)
     }, 500)

@@ -133,7 +133,8 @@ function App() {
           </motion.div>
         </AnimatePresence>
       </main>
-      </div>
+        </div>
+      </motion.div>
     </AnimatePresence>
   )
 }

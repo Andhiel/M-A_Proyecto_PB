@@ -9,16 +9,6 @@ interface TranscriptionSegment {
   speaker?: string
 }
 
-interface Task {
-  id: number
-  description: string
-  responsible: string | null
-  deadline: string | null
-  project: string | null
-  priority: 'high' | 'medium' | 'low'
-  status: 'pending' | 'completed' | 'observation'
-}
-
 export default function MeetingRecorder() {
   const [isRecording, setIsRecording] = useState(false)
   const [transcription, setTranscription] = useState<TranscriptionSegment[]>([])
