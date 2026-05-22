@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import MeetingRecorder from './components/MeetingRecorder'
 import Dashboard from './components/Dashboard'
 import LoadingScreen from './components/LoadingScreen'
 import Login from './components/Login'
 import LandingPage from './components/LandingPage'
+import ThemeToggle from './components/ThemeToggle'
 import { Mic, LayoutDashboard, LogOut, User } from 'lucide-react'
 
 type ViewState = 'loading' | 'landing' | 'login' | 'meeting' | 'dashboard'
@@ -36,15 +38,34 @@ function App() {
   }
 
   if (viewState === 'landing') {
-    return <LandingPage onGetStarted={handleGetStarted} />
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <LandingPage onGetStarted={handleGetStarted} />
+      </motion.div>
+    )
   }
 
   if (viewState === 'login') {
-    return <Login onLogin={handleLogin} />
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Login onLogin={handleLogin} />
+      </motion.div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <AnimatePresence mode="wait">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <nav className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -62,6 +83,7 @@ function App() {
               </div>
               
               <div className="flex space-x-2">
+                <ThemeToggle />
                 <button
                   onClick={() => setCurrentView('meeting')}
                   className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
@@ -99,9 +121,20 @@ function App() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentView === 'meeting' ? <MeetingRecorder /> : <Dashboard />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {currentView === 'meeting' ? <MeetingRecorder /> : <Dashboard />}
+          </motion.div>
+        </AnimatePresence>
       </main>
-    </div>
+      </div>
+    </AnimatePresence>
   )
 }
 

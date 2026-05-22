@@ -1,10 +1,22 @@
-import { useState, useRef, useEffect } from 'react'
-import { Mic, MicOff, Square, Loader2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { toast } from 'sonner'
+import { Mic, Square, Loader2, Download } from 'lucide-react'
+import { exportTranscriptionToPDF } from '../utils/exportToPDF'
 
 interface TranscriptionSegment {
   text: string
   timestamp: number
   speaker?: string
+}
+
+interface Task {
+  id: number
+  description: string
+  responsible: string | null
+  deadline: string | null
+  project: string | null
+  priority: 'high' | 'medium' | 'low'
+  status: 'pending' | 'completed' | 'observation'
 }
 
 export default function MeetingRecorder() {
@@ -57,9 +69,10 @@ export default function MeetingRecorder() {
       mediaRecorderRef.current = new MediaRecorder(stream)
       mediaRecorderRef.current.start()
       setIsRecording(true)
+      toast.success('Grabación iniciada')
     } catch (error) {
       console.error('Error accessing microphone:', error)
-      alert('No se pudo acceder al micrófono. Por favor verifique los permisos.')
+      toast.error('No se pudo acceder al micrófono. Por favor verifique los permisos.')
     }
   }
 
@@ -75,6 +88,7 @@ export default function MeetingRecorder() {
     
     setIsRecording(false)
     setIsProcessing(true)
+    toast.info('Procesando transcripción...')
     
     // Process transcription to extract tasks
     setTimeout(() => {
@@ -88,26 +102,63 @@ export default function MeetingRecorder() {
   const extractTasksFromTranscription = (segments: TranscriptionSegment[]) => {
     const fullText = segments.map(s => s.text).join(' ')
     
-    // Simple rule-based extraction for MVP
+    // Advanced rule-based extraction with more patterns
     const taskPatterns = [
-      /(?:necesito|tengo que|debo|hay que|vamos a)\s+(.+)/gi,
-      /(?:tarea|actividad|pendiente|acción)\s*[:]\s*(.+)/gi,
-      /(?:para|el|la)\s+(.+?)\s+(?:necesita|requiere|debe)/gi
+      // Action verbs with future tense
+      /(?:necesito|tengo que|debo|hay que|vamos a|deberíamos|tenemos que)\s+(.+?)(?:\.|,|$)/gi,
+      // Task keywords
+      /(?:tarea|actividad|pendiente|acción|item|to-do)\s*[:]\s*(.+?)(?:\.|,|$)/gi,
+      // Responsibility patterns
+      /(?:para|el|la|los|las)\s+(.+?)\s+(?:necesita|requiere|debe|hará|realizará)\s+(.+?)(?:\.|,|$)/gi,
+      // Deadline patterns
+      /(?:para|el|la)\s+(?:el|los|las)?\s*(?:día|fecha|semana|mes)\s+(?:de\s+)?(.+?)(?:\.|,|$)/gi,
+      // Project context
+      /(?:en\s+el\s+proyecto|del\s+proyecto|para\s+el\s+proyecto)\s+(.+?)(?:\.|,|$)/gi,
+      // Commitment patterns
+      /(?:me comprometo|prometo|voy a|haré)\s+(?:a\s+)?(.+?)(?:\.|,|$)/gi,
+      // Assignment patterns
+      /(?:asignado|responsable|encargado)\s+(?:a\s+)?(.+?)(?:\.|,|$)/gi,
+      // Priority indicators
+      /(?:urgente|prioridad|importante|crítico)\s*[:]\s*(.+?)(?:\.|,|$)/gi
     ]
 
     const tasks: any[] = []
+    const seenDescriptions = new Set()
     
     taskPatterns.forEach(pattern => {
       let match
       while ((match = pattern.exec(fullText)) !== null) {
-        tasks.push({
-          id: Date.now() + Math.random(),
-          description: match[1].trim(),
-          responsible: null,
-          deadline: null,
-          project: null,
-          status: 'pending'
-        })
+        const description = match[1] ? match[1].trim() : match[0].trim()
+        
+        // Avoid duplicates
+        if (description.length > 10 && !seenDescriptions.has(description.toLowerCase())) {
+          seenDescriptions.add(description.toLowerCase())
+          
+          // Try to extract responsible person
+          const responsibleMatch = description.match(/(?:por|de|a)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/)
+          const responsible = responsibleMatch ? responsibleMatch[1] : null
+          
+          // Try to extract deadline
+          const deadlineMatch = description.match(/(?:para|el|la)\s+(?:el\s+)?(\d{1,2}(?:\/|-)\d{1,2}(?:\/|-)\d{2,4}|\d{1,2}\s+de\s+\w+)|(?:mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|esta\s+semana|el\s+mes\s+que\s+viene)/i)
+          const deadline = deadlineMatch ? deadlineMatch[1] : null
+          
+          // Try to extract project
+          const projectMatch = description.match(/(?:en|del|para)\s+(?:el\s+)?(?:proyecto\s+)?(.+?)(?:\.|,|$)/i)
+          const project = projectMatch ? projectMatch[1] : null
+          
+          // Determine if it's a high priority task
+          const isPriority = /(?:urgente|importante|crítico|asap|ya)/i.test(description)
+          
+          tasks.push({
+            id: Date.now() + Math.random(),
+            description: description,
+            responsible: responsible,
+            deadline: deadline,
+            project: project,
+            priority: isPriority ? 'high' : 'medium',
+            status: 'pending'
+          })
+        }
       }
     })
 
@@ -119,6 +170,7 @@ export default function MeetingRecorder() {
         responsible: null,
         deadline: null,
         project: 'Observación general',
+        priority: 'low',
         status: 'observation'
       })
     }
@@ -138,7 +190,22 @@ export default function MeetingRecorder() {
     setShowSummary(false)
     setTranscription([])
     setExtractedTasks([])
-    alert('Tareas guardadas exitosamente')
+    toast.success('Tareas guardadas exitosamente')
+  }
+
+  const exportToPDF = () => {
+    if (transcription.length === 0) {
+      toast.error('No hay transcripción para exportar')
+      return
+    }
+    
+    try {
+      exportTranscriptionToPDF(transcription, extractedTasks, new Date())
+      toast.success('PDF exportado exitosamente')
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      toast.error('Error al exportar PDF')
+    }
   }
 
   const cancelMeeting = () => {
@@ -189,7 +256,16 @@ export default function MeetingRecorder() {
 
       {transcription.length > 0 && !showSummary && (
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-xl font-semibold text-white mb-4">Transcripción en Tiempo Real</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Transcripción en Tiempo Real</h3>
+            <button
+              onClick={exportToPDF}
+              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Exportar PDF
+            </button>
+          </div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {transcription.map((segment, index) => (
               <div key={index} className="bg-slate-700 rounded-lg p-4">
@@ -289,6 +365,12 @@ export default function MeetingRecorder() {
           </div>
 
           <div className="flex space-x-4">
+            <button
+              onClick={exportToPDF}
+              className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium"
+            >
+              Exportar PDF
+            </button>
             <button
               onClick={confirmTasks}
               className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"

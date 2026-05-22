@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Mic, LogIn, User, Lock, Sparkles } from 'lucide-react'
 
 interface LoginProps {
@@ -25,9 +26,11 @@ export default function Login({ onLogin }: LoginProps) {
       const user = USERS.find(u => u.username === username && u.password === password)
       
       if (user) {
+        toast.success(`¡Bienvenido, ${user.name}!`)
         onLogin(user.name)
       } else {
         setError('Credenciales inválidas')
+        toast.error('Credenciales inválidas')
         setIsLoading(false)
       }
     }, 1000)
